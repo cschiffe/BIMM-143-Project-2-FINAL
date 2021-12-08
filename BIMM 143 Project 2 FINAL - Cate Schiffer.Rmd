@@ -1,0 +1,328 @@
+---
+title: "Project 2 Code - 2C"
+output: html_notebook
+---
+**INTRODUCTION** 
+**Scientific Question**: 
+Does the microgravity environment in space affect gene expression in human induced pluripotent stem cell-derived cardiomyocytes (hiPSC-CMs), and, through differential gene expression analysis, are the expression changes permanent after returning back to standard gravity from spaceflight?
+
+**Background Info**: 
+With the increased interest in space, it is becoming more important to understand the implications of the microgravity environment in space on the human body and the effect that it has on an individual's overall well-being. Some of the research done on certain cells', like stem cells', alteration due to microgravity can actually have beneficial applications to treating diseases, such as heart disease, and used in other cell therapies back down on Earth (Baio et al., 2018),(Camberos et al., 2019), (Jha et al., 2016). To start, let's define a few terms. Microgravity is the condition where the force due to gravity is very minimal. Words like "weightlessness" and "zero-g" have been thrown around to describe it, although these terms are not entirely accurate. It is a condition where objects appear to be weightless. A good example of a microgravity environment is orbiting Earth on a spacecraft, such as the International Space Station (ISS). Microgravity can also be simulated by spinning something just at the right conditions where the force of gravity appears to cancel out from the centripetal force of motion. But what are human induced pluripotent stem cell-derived cardiomyocytes (hiPSC-CMs)? Let's break it down. A cardiomyocyte is a cell in the heart that is responsible for contraction. Induced pluripotent stem cells are a type of pluripotent stem cell that can be differentiated into any somatic cell, which is any cell in the body that is not a reproductive cell.Stem cells are a special kind of cell in which they can differentiate into a variety of types of cells in order to replace/replenish specialized cells that are lost or damaged. The word "derived" in front of cardiomyocyte means that the stem cells were differentiated specifically into cardiomyocytes. The iPSC-CMs specifically focused on in this project come from human cell lines. The data that will be used in this project were found on from an article titled "Effects of Spaceflight on Human Induced Pluripotent Stem Cell-Derived Cardiomyocyte Structure and Function" by Wnorowski et al.(2019) in the Supplemental Information section. This data was formatted as differential gene expression in a multi-group comparison among ground control, post-flight, and in-flight samples. These hiPSC-CMs originated from 3 different cell lines from 3 separate individuals; some of the cells from each cell line remained on Earth to act as a baseline measurement, and the other cells were flown to the ISS for 5.5 weeks. After 5.5 weeks, the in-flight samples were measured and sent back down to Earth. 10 days post-flight, the samples that were in space were measured again for differential gene expression. Each cell line in each condition were measured twice. There were 2635 specific genes that were measured to be differentially expressed and are present within the data set. The data set is an excel sheet and was downloaded directly from the paper and I will import it into R in the coding section. The following link is the DOI for the paper and the download link for the data sheet. https://doi.org/10.1016/j.stemcr.2019.10.006
+ https://www.cell.com/cms/10.1016/j.stemcr.2019.10.006/attachment/5bcdb48b-95a2-4f22-a7a6-a8dafb660d9b/mmc2.xlsx 
+
+
+**Scientific Hypothesis**: 
+If human induced-pluripotent stem cell-derived cardiomyocytes (hiPSC-CMs) are exposed to microgravity during space travel, then the hiPSC-CMs adapt to the microgravity by developing a unique gene-expression signature; the in-flight samples have an upregulation of expression in genes related to metabolic function, and decreased expression in genes related to DNA damage and repair, in comparison to the ground control samples. If the changes in gene expression in space microgravity are temporary, then subsequent to space travel, the gene-expression patterns of the in-flight samples revert to standard-gravity expression patterns post-flight.
+
+**Bioinformatics Methods Breakdown**: 
+The bioinformatics and plotting methods I will be using are p values and clustering. P-values will help determine whether or not the changes that are observed in gene expression of the hiPSC-CMs are random or statistically significant. These will give a probability that measures the possibility of observing a random result that is at least as extreme as an actual, measured result, assuming the null hypothesis is true. The null hypothesis states that the observed difference between different groups or samples, in this case, it would be the differences in gene expression, are not significant and that these observed results are purely based on random chance. The significance level I will be using is 0.05. If the p-values that are returned are less than 0.05, then the results are statistically significant and the null hypothesis is rejected; if the p-value returned is greater than 0.05, then the null hypothesis cannot be rejected. The data set I obtained has differential expression data for 2635 genes, where the corresponding number for each gene in the separate samples was found using a negative binomial distribution. These values are estimates of variance-mean dependence in count data from high-throughput sequencing assays and look for differential expression. The values were also normalized. The data also contained 3 cell lines (originated from 3 separate individuals) and 3 different sample types: ground control, in-flight samples, and the post-flight samples are the same as the in-flight samples but were measured 10 days after returning from space. Also, each set was measured twice. I will the average expression level for all of the genes between each cell line together for each separate condition. Then, from there, the average gene expression for each gene in different conditions can be compared to each other: ground control vs in-flight, in-flight vs post-flight, and post-flight vs ground control. These p-values will illustrate if there is a significant difference between the expression levels, which can determine whether there are changes in expression level during spaceflight and if these changes remained after coming back to Earth. Also, the post-flight data will be measured against the ground control data to see if the post-flight expression patterns are more closely related to the in-flight or the ground control expression patterns. From here, I will perform the visualization method, which is a Volcano plot. This plot takes into account the fold change between gene expression data and the p-values. It has 2 regions of major interest: the top right and left boxes (where the red dots are). These values show significant fold change with a high statistical significance. So, the genes that are plotted with a red dot are genes whose differential expression between the ground control samples and the in-flight samples is highly statistically significant and have a significant fold change. Some examples of these genes are plotted on the volcano plot. The genes over on the right side have an increased expression (upregulated) in the in-flight samples (exposed to microgravity) compared to the ground control samples (standard gravity). This will measure the genes separately and will illustrate if any genes cluster together and if their differential expression is significant. Then, I will do some analysis as to why these genes cluster together, such as if they are part of the same cellular or metabolic pathway.
+
+
+In the first chunk of code, it is necessary to load in any packages that will be required to perform the bioinformatics mentioned above. The following lines will contain definitions of the packages and why they are loaded in. 
+1) readxl - readxl is a package that is used to help import data from an excel sheet into R. This will be helpful with importing the data set, which is a .xlsx file.
+2) matrixStats - matrixStats is a package that will help determine the standard deviation of the rows in a matrix (in other words, row-wise standard deviations). This was used, specifically, in the creation of the Avg_Exp_Data function to be able to have a standard deviation column added to the data frames after being converted to a matrix. This package, in general, has a lot of different functions built-in to be able to perform statistical methods across rows and columns of matrices and transforming them into vectors. 
+3)dplyr - also helped with the loops in storing an output from a loop into a vector. This package is very useful when working with data frames and with data manipulation. This was used specifically to slice the IvG_Exp_df_fixed to remove the undesirable rows based on the number just generated from the for loop.
+4) tibble - This was used to convert the row names into its own separate column for in the visualization step to remove the genes that do not have p values before finding the fold change. This package is useful in manipulating tbls and data frames. It is part of the tidyverse package collection. 
+5) EnhancedVolcano from Bioconductor - This package is used to create the volcano plot. It can color code and label the data points, as well. There are a ton of different features that all involve managing aesthetics on the plot. EnhancedVolcano automatically labels certain data points and ensures a clean plot (that is, it will make sure the plot does not look to crowded).Different parameters can be set for the plot, too, such as significance levels for both the fold changes and the p-values.  
+
+Before running the code below, in the console I needed to install the packages using the commands:
+**CODING** 
+
+```{r}
+#These lines of code will install all of the required packages into R. This can be done in the console. This chunk of code is just a demonstration of what will be run in the console, and will be commented out. (In the console remove the "#" and the code will run smoothly)
+#install.packages("readxl")
+#install.packages("matrixStats")
+#if (!requireNamespace('BiocManager', quietly = TRUE))
+    #install.packages('BiocManager')
+
+  #BiocManager::install('EnhancedVolcano')
+#install.packages("dplyr")
+#install.packages('tibble')
+```
+
+Now let's load in the necessary packages.
+```{r}
+#These lines of code will load in the packages required to perform the bioinformatics analyses. Once the packages are loaded in, they will be ready to use! Happy coding! 
+library(readxl)
+library(matrixStats)
+library(EnhancedVolcano)
+library(dplyr)
+library(tibble)
+```
+
+Now let's import our data set so that it can be used in the bioinformatics analysis. As a reminder this data set, from Wnorowski et al. (2019), has differential expression data for 2635 genes. It is saved on my computer as a csv file and will be imported into R as a data frame. The following lines of code will execute these steps:
+```{r}
+#Import the data set into R. The function read_excel() is a package-specific function in the readxl package and is used here because the original data file is a Microsoft Excel file: .xlsx. 
+
+Data_xl <- read_excel("BIMM 143 Project 2 Dataset - Excel.xlsx")
+
+#Here, Data_xl is a global variable, which is a variable created outside of a function that can be used both inside and outside of a function. This will help us in a second when we want to convert the .xlsx file to a data frame.
+class(Data_xl)
+
+#Running the class() function outputs what the data types are. Here we see that the data types are "tbl_df", which is a subset of a data frame, "tbl", which is tabular data, and "data.frame", which altogether make up a tibble. Let's now make sure that this data is in a data frame, so it can be easier for the analysis. This can be done with the following code (and checking to see if the function worked, I used the class() function once again.)
+
+xl_Data_df <- data.frame(Data_xl, row.names = TRUE)
+class(xl_Data_df)
+#Perfect! Our data is now in a data frame. We can now begin our analysis! Note: Data_df is also a global variable, which is a variable created outside of a function that can be used both inside and outside of a function.
+
+#For funsies, let's take a look at our data frame, so we know what we are working with. 
+print(xl_Data_df)
+```
+Whoa. That is a lot to take in at once. Let's breakdown our data. The top row "Line ID" specifies what sample is being measured. The lines correspond to the 3 different cell lines of origin. Some of the hiPSC-CMs were left on Earth for testing (ground), and the others were launched into space and cultured on the ISS (in-flight). The in-flight samples (in-flight) were then brought back down to Earth to be analyzed post-flight (post-flight). These are specified in the "Conditions." Each sample for each cell line were measured twice. For example, L1.PF.1 represents the first set of measurements for the samples from cell line 1 that were measured post-flight, while L1.PF.2 represents the same set of cells under the same condition getting measured a second time. "Gene" is an empty row, since it is acting as a title for the columns beneath it. In the names under "Gene" in the sample column represents the name of the gene whose expression is being measured. The numbers in the rows containing the gene name represent the differential expression of the corresponding genes.
+
+For our further analysis, we do not need the first three rows in our data frame, so let's get rid of them so we only have the gene names and the expression data. The following line will remove those unnecessary lines. Also, let's make sure that the columns are all numeric objects.
+```{r}
+Data_df <- xl_Data_df[-c(1:3),]
+#The following code is a bit funky. Having the double brackets after Data_df[] ensure this stays a data frame. Also, the sapply() function is used since it can apply an operation (in this case, as.numeric()) over all of the objects in the entire data frame Data_df. In this case, we were able to convert all of the values into numeric values with the class "dbl".
+Data_df[] <- sapply(Data_df, as.numeric)
+
+#Let's see if this worked!
+
+print(Data_df)
+#Perfect! Now we have just the genes and the expression data. The names of the lines with their corresponding line number, measurement number, and condition can be found at the very top, still. Also, the class under the columns is "dbl" which stands for "double." "Double" is a subset of the numeric data type that is designed to have decimal points. As a reminder, L1.PF.1 means this measurement is taken from cells from line 1, post-flight, first measurement (of 2 measurements taken for each line).
+```
+
+```{r}
+#Since each cell line was measured twice and there were 3 different cell lines tested, let's make it a little easier on ourselves down the line for the differential expression analysis. I am going to create a function that will take the average expression between the the cells lines (which had two readings each => 6 total) that measured the same sample (condition and genes). That way, I will have one measurement (the average expression found by taking the mean expression of all 3 cell lines) per gene per condition. I am going to make a function to get this done a bit quicker and to prevent redundancy. 
+
+Gene <- c(row.names(Data_df)) 
+#First, I created a vector containing the gene names, for simplicity and to avoid redundancy. This variable is a global variable and will represent a vector of the gene names that will be inputted in the new-and-improved data frame with the average expression per gene from all of the cell lines per condition. This vector takes the gene names that are found in column names of our original data set's data frame.
+
+Avg_Exp_Data <- function(Gene,condition, Ignored_Cols){
+  #This is the start of the set-up for making a function from scratch. I am going to call the function Avg_Exp_Data and the arguments are Gene, created outside of the function, condition, which specifies what the samples were exposed to when measured, and Ignored_Cols, which is the list of columns that will be ignored when finding a certain sample's averages, so each group can be tested individually.
+ 
+  
+  Condition <- rep(c(condition),each=2635)
+  #Condition is now a local variable. A local variable is a variable made inside of a function that cannot be accessed from outside of this function. Condition will be a variable containing a vector of the condition of the sample collected, whether it was measure on the ground, in-flight, or post-flight. The rep() function just means that the condition, which will be specified in the argument of the function will be repeated 2635 times, or once per gene. 
+  
+   Cropped_df <- Data_df[, -Ignored_Cols]
+   #This function will create a temporary data frame inside of the function, which also happens to be a local variable, that will remove the columns that are not desired. For example, if I want to look at the in-flight data, I will remove the columns that do not involve the in-flight data. This way, it will be easier to calculate the average of the rows.
+   
+   Average_Expression <- c(rowMeans(Cropped_df))
+     #Average_Expression is also a local variable. This variable contains a vector of the mean value of expression from all of the cell lines together for that specific gene measured under a certain condition. This took the row means from the cropped_df, which was the temporary data frame made in the line above. This value will also be useful later on in findings the fold changes (but stay tuned for that one). 
+   
+   Standard_Deviation <- c(rowSds(as.matrix(Cropped_df)))
+   #Standard_Deviation is also a local variable. This is a vector that contains the standard deviations of the mean value of the expression data calculated in the step above. The function here rowSds() is from the matrixStats package! This package needs the arguments to be in matrix-form, so that is why there is an addition function (as.matrix()) in the argument.
+   
+  return(data.frame(Condition, Average_Expression, Standard_Deviation))
+  #This constructs a data frame with the information from above. Each vector will be its own column in the new mini data frame. 
+}
+#This function will be used 3 times to create 3 different data frames for each condition: post-flight, in-flight, and ground. Once all three mini data frames are created, I will combine them all again into a bigger data frame for further analysis. 
+```
+
+```{r}
+#Now I will use the function I just created to create the mini Data Frames for each of the Conditions.
+
+#Post-Flight Average Expression (Columns 1 through 6, out of 18)
+AE_PF_df <- Avg_Exp_Data(Gene, "Post-Flight", Ignored_Cols = c(7:18))
+
+print(AE_PF_df)
+
+#In-Flight Average Expression (Columns 7 through 12, out of 18)
+AE_IF_df <- Avg_Exp_Data(Gene, "In-Flight", Ignored_Cols = c(1:6, 13:18))
+
+print(AE_IF_df)
+
+#Ground Control Average Expression (Columns 13 through 18, out of 18)
+AE_GC_df <- Avg_Exp_Data(Gene, "Ground", Ignored_Cols = c(1:12))
+
+print(AE_GC_df)
+```
+Beautiful! Now let's stitch them back together into a new data frame that only has the average expression data per gene per condition expression was measured in.
+```{r}
+#Merging the 3 mini data frames that we just created back together again!
+Avg_Expr_df <- cbind(AE_PF_df, AE_IF_df, AE_GC_df)
+
+print(Avg_Expr_df)
+```
+Looks great! Now we can move on with the statistical analysis! 
+Before we can get our p-values, let's set a few things straight. We know our significance level is 0.05. Our specific degrees of freedom (dof) are going to be based on the average expression levels between two different conditions at a time. To find our dof, 1 will be subtracted from the number of observations, which is 2, so our dof is 1. Now, the first step in obtaining a p-value is to perform a t-test! For out t-test, we want it to be a two-tailed t-test. This is because we are looking at any observed, significant differences in our samples; two-tailed t-tests encompasses both the possibilities: a sample could have higher or lower expression than the sample it is being compared to.
+
+
+```{r}
+Data_matrix <- as.matrix.data.frame(Data_df, nrow = 2636, ncol = 19, byrow = TRUE, rownames.force = TRUE)
+##This will convert our data frame containing all of the data into a matrix, so we can run the for loop. Now let's begin constructing! 
+
+#**P VALUE FUNCTION FOR POST-FLIGHT vs IN-FLIGHT**
+p_values_df_PvI <- function(Gene,condition1, condition2){
+  #I am going to create another function from scratch to avoid redundancy
+  #Create for loop to run through each row in the matrix. Post-flight measurements are columns 1-6, and In-Flight measurements are columns 7-12. 
+  Compare <- paste(condition1, "vs", condition2)
+  #This line will print out which conditions are being compared for the t-test. For example, if I wanted to get the t score between in-flight and post-flight samples, this would read "In-Flight vs Post-Flight"). The following line of code is to ensure that this gets printed for every gene whose expression is being compared between samples.
+  Comparisons <- rep(c(Compare),each=2635)
+  #Condition is now a local variable. This will be a variable containing a vector of the condition of the sample collected, whether it was measure on the ground, in-flight, or post-flight. The rep() function just means that the condition, which will be specified in the argument of the function will be repeated 2635 times, or once per gene.
+#Then, print just the p-value of the t-test
+   p_value_PvI <- c()
+   for(i in 1:nrow(Data_matrix)){
+      Post_Flight = c(Data_matrix[i, 1:6])
+      In_Flight = c(Data_matrix[i, 7:12])
+      p_value_PvI[i] <- c(t.test(Post_Flight, In_Flight, alternative = c("two.sided"),
+                       paired = TRUE, conf.level = 0.95)$p.value)
+    }
+  return(data.frame(Gene, Comparisons, p_value_PvI)) 
+  #This constructs a data frame with the information from above. Each vector will be its own column in the new mini data frame.
+}
+
+#**P VALUE FUNCTION FOR POST-FLIGHT vs GROUND**
+p_values_df_PvG <- function(Gene,condition1, condition2){
+  #I am going to create another function from scratch to avoid redundancy
+  #Create for loop to run through each row in the matrix. Post-flight measurements are columns 1-6, and In-Flight measurements are columns 7-12. 
+  Compare <- paste(condition1, "vs", condition2)
+  #This line will print out which conditions are being compared for the t-test. For example, if I wanted to get the t score between in-flight and post-flight samples, this would read "In-Flight vs Post-Flight"). The following line of code is to ensure that this gets printed for every gene whose expression is being compared between samples.
+  Comparisons <- rep(c(Compare),each=2635)
+  #Condition is now a local variable. This will be a variable containing a vector of the condition of the sample collected, whether it was measure on the ground, in-flight, or post-flight. The rep() function just means that the condition, which will be specified in the argument of the function will be repeated 2635 times, or once per gene.
+#Then, print just the p-value of the t-test
+  #Create new loop for Post-Flight verses Ground control sample comparison
+    p_value_PvG <- c()
+  for(i in 1:nrow(Data_matrix)){
+    Post_Flight = c(Data_matrix[i, 1:6])
+    Ground = c(Data_matrix[i, 13:18])
+    p_value_PvG[i] <- c(t.test(Post_Flight, Ground, alternative = c("two.sided"),
+               paired = TRUE, conf.level = 0.95)$p.value)
+    }
+  return(data.frame(Gene, Comparisons, p_value_PvG)) 
+  #This constructs a data frame with the information from above. Each vector will be its own column in the new mini data frame.
+}
+
+
+#**P VALUE FUNCTION FOR IN-FLIGHT vs GROUND**
+p_values_df_IvG <- function(Gene,condition1, condition2){
+  #I am going to create another function from scratch to avoid redundancy
+  #Create for loop to run through each row in the matrix. Post-flight measurements are columns 1-6, and In-Flight measurements are columns 7-12. 
+  Compare <- paste(condition1, "vs", condition2)
+  #This line will print out which conditions are being compared for the t-test. For example, if I wanted to get the t score between in-flight and post-flight samples, this would read "In-Flight vs Post-Flight"). The following line of code is to ensure that this gets printed for every gene whose expression is being compared between samples.
+  Comparisons <- rep(c(Compare),each=2635)
+  #Condition is now a local variable. This will be a variable containing a vector of the condition of the sample collected, whether it was measure on the ground, in-flight, or post-flight. The rep() function just means that the condition, which will be specified in the argument of the function will be repeated 2635 times, or once per gene.
+#Then, print just the p-value of the t-test
+    p_value_IvG <- c()
+  for(i in 1:nrow(Data_matrix)){
+      In_Flight = c(Data_matrix[i, 7:12])
+      Ground = c(Data_matrix[i, 13:18])
+      p_value_IvG[i] <- c(t.test(In_Flight, Ground, alternative = c("two.sided"), 
+               paired = TRUE, conf.level = 0.95)$p.value)
+      }
+  return(data.frame(Gene, Comparisons, p_value_IvG)) 
+  #This constructs a data frame with the information from above. Each vector will be its own column in the new mini data frame.
+}
+```
+
+Moment of truth...Let's see if that worked!
+
+```{r}
+#Testing out the newly created functions and printing the results!
+  
+  #Post-Flight vs In-Flight
+PvI_p <- p_values_df_PvI(Gene, "Post-Flight", "In-Flight")
+PvI_p
+
+  #Post-Flight vs Ground
+PvG_p <- p_values_df_PvG(Gene, "Post-Flight", "Ground")
+PvG_p
+  
+  #In-Flight vs Ground
+IvG_p <- p_values_df_IvG(Gene, "In-Flight", "Ground")
+IvG_p
+
+```
+
+Absolutely perfect! Here we can see the p values for each gene that was measured for each of the three comparisons! Recall, our significance level is 0.95, or 95%, which means that if there is a p-value less that 0.05, then the difference is statistically significant! Note: some of these p values returned NaN. This is because there was no difference at all in each of the measurements that they took. At a quick glance, it appears that the in-flight samples compared to the ground samples had extremely small p-values, since these values are less than 0.05, the observed differences between the measurements are statistically significant. Therefore, it can be said that microgravity did indeed have an effect on the gene expression in hiPSC-CMs. Also, it seems that the post-flight vs ground samples have higher p values (larger than 0.05),which also happened to be very similar to the post-flight vs ground control samples, meaning the observed difference between the measurements in the groups are not statistically significant. From here, it can be said that since the gene expression data for the post-flight and the ground control samples are the most similar, the differential gene expression patterns that the hiPSC-CMs adopt in space microgravity is temporary; returning to Earth restores the gene expression patterns back to normal/pre-flight conditions. 
+
+In order to move on to the visualization of which genes are upregulated or downregulated in microgravity, let's first get rid of the gene rows that did not have a valid p-value, that is the function's output was NaN.
+
+```{r}
+#Getting ride of the genes with "NaN" instead of a p-value using the na.omit function!
+  
+  #Post-Flight vs In-Flight
+PvI_p_fixed <- na.omit(PvI_p)
+PvI_p_fixed
+
+  #Post-Flight vs Ground
+PvG_p_fixed <- na.omit(PvG_p)
+PvG_p_fixed
+  
+  #In-Flight vs Ground
+IvG_p_fixed <- na.omit(IvG_p)
+IvG_p_fixed
+```
+ Great! Alrighty! Moving right along! :)
+ 
+ Now let's visualize our data, specifically with the gene expression differences between the in-flight samples and the ground control samples to see which genes were up or downregulated once experiencing space mircogravity.
+
+**In-Flight vs Ground Analysis - Visualization**
+```{r}
+#First we have to calculating the fold change for the volcano plot: In-Flight vs Ground; eventually do log2(Fold Change) and this will be the x - axis; the y -axis is the p-values)
+
+Space_Genes <- IvG_p_fixed[, 1]
+#This is a global variable that is a vector containing the names of just the genes in which a p-value was able to be calculated. This is taking the column in the IvG_p_fixed data frame and converting it into a vector
+#Space_Genes
+#Uncomment the line above to print the Space_Genes
+
+AE_IF_df_fixed <- Avg_Exp_Data(Gene, "In-Flight", Ignored_Cols = c(1:6, 13:18))
+
+AE_GC_df_fixed <- Avg_Exp_Data(Gene, "Ground", Ignored_Cols = c(1:12))
+
+Cropped_df_IvG <- cbind(AE_IF_df_fixed, AE_GC_df_fixed)
+#These trio of functions, which are all global variables, are used to construct a data frame with the average gene expression from in-flight and ground control samples so that we can calculate the fold change. 
+
+IvG_Expression_df <- Cropped_df_IvG[, c(2, 5)]
+#2 and 5 here represent the columns with the in-flight expression data and ground expression data.
+
+IvG_Expression_df
+
+IvG_Expression_df_add <- tibble::rownames_to_column(IvG_Expression_df, "GENES")
+IvG_Expression_df_add
+#This used the tibble package to turn the row names into a column. Now we can remove the rows of genes that are not in the Space_Genes vector
+
+#Let's see the compare GENES to Space_Genes. Recall that Space_genes are the names of the genes that returned a valid p value.the setdiff() function that outputs values/objects that are not present in the two vectors it is comparing. In our case, it will return the genes that did not have a valid p-value. These undesirable genes will be removed from out average expression data frame so it does not mess up our plot. Also because we are analyzing differentially expressed genes and we only want to look at the genes that experienced an expression change.
+Undesirable_genes <- print(setdiff(Gene, Space_Genes))
+
+#In the console, there are a total of 66 out of 2635 genes that are undesirable. Let's get rid of them now from out data frame.
+
+Bye_bye_rows <- c()
+for (i in Undesirable_genes){
+  Bye_bye_rows[i] <- c(print(which(IvG_Expression_df_add$GENES == i)))
+}
+Bye_bye_rows
+#This will tell us which rows should be omitted! 
+
+IvG_Exp_df_fixed <- IvG_Expression_df_add %>% slice(-(Bye_bye_rows))
+#This slice function, from the dplyr package, will remove the undesirable rows based on the number just generated from the for loop.
+
+print(IvG_Exp_df_fixed)
+
+                         
+```
+Note: Average_Expression represents in-flight and Average_Expression1 is for ground.
+```{r}
+#Time to find the fold change! To do this, I am going to divide the expression data from in-flight by ground expression data and add the new data to the data frame as its own column.It measures the how much the in-flight average expression changed compared to the control: In-flight expression / Ground control expression.
+
+Fold_Change_df <- IvG_Exp_df_fixed
+#This copies the data from the data frame we just made into the new one that will have the fold change data.
+
+Fold_Change_df$FoldChange <- Fold_Change_df$Average_Expression / Fold_Change_df$Average_Expression.1
+
+#Let's take a look
+Fold_Change_df
+```
+Great! Note: the column name is still "GENES" but the genes that are displayed are from Space_Genes. 
+```{r}
+#For our plot, we need the log2(Fold Change). This will be stored in a  global variable and used in making our plot.
+log2FoldChange <- sapply(Fold_Change_df$FoldChange, log2)
+
+#Although for the Volcano plots, we also need the negative log10(pvalues) to act as the y axis of our plot, we do not need to actually find these values. EnhancedVolcano will do this for us! How nice! :) I am going to name the p-values as log10pvalues, anyway, just so we know that usually for a volcano plot, it should incorporate those -log10(pvalues) on the y-axis.
+log10pvalue <- (IvG_p_fixed$p_value_IvG)
+
+
+#Let's make a data frame (I know, there are a lot) that contain the Gene names (Space_Genes), the log2 of the fold change (log2FoldChange), and the p-value data (log10pvalue). 
+Volcano_data <- data.frame(Space_Genes, log2FoldChange, log10pvalue)
+Volcano_data
+```
+
+```{r}
+#Yay! Great! Let's plot the Volcano plot now! The time has finally come! (The following code will be using a function from the EnhancedVolcano package)
+Volcano_plot <- EnhancedVolcano(Volcano_data, lab = Volcano_data$Space_Genes, x = 'log2FoldChange', y = 'log10pvalue', title = "DEG In-Flight vs Ground Control hiPSC-CMs",xlim = c(-1.25, 1.25), ylim = c(0,5.2), pCutoff = 0.05, FCcutoff = 0.5, pointSize = 1.25, labSize = 3.3)
+Volcano_plot
+```
+Yay! Great! Beautiful! Look at that volcano plot! Wow! 
+Here is how to interpret this plot:
+This plot has 2 regions of major interest: the top right and left boxes (where the red dots are). These values show significant fold change with a high statistical significance. So, the genes that are plotted with a red dot are genes whose differential expression between the ground control samples and the in-flight samples is highly statistically significant and have a significant fold change.Some examples of these genes are plotted on the volcano plot. The genes over on the right side have an increased expression (upregulated) in the in-flight samples (exposed to microgravity) compared to the ground control samples (standard gravity). One of these genes is AQP10. This gene codes for an aquaporin-10, which is a water channel that allows water, as well as glycerol, to to transport past through cell membranes. These are important especially in metabolism. Glycerol is a substrate in gluconeogenesis, which produced glucose. This is especially important in a cardiomyocyte, since its responsibility is to keep the heart beating. On the other side of the volcano plot in the other region of interest, we can find the genes whose expression was decreased (downregulated) for the in-flight samples. One of these genes is MIR590. This gene is a microRNA,which is a short,non-coding RNA sequence that is essential to regulating gene expression, especially for stability and translation of mRNA. This sequence of microRNA is part of the RNA-induced silencing complex (RISC), which can detect imperfect mRNA base pairing with the help of microRNA, and will prevent translation when imperfections are detected. As a reminder, my scientific question was does the microgravity environment in space affect gene expression in human induced pluripotent stem cell-derived cardiomyocytes (hiPSC-CMs), and, through differential gene expression analysis, are the expression changes permanent after returning back to standard gravity from spaceflight? Through this analysis, I have found that if hiPSC-CMs are exposed to microgravity during space travel, then the hiPSC-CMs do, in fact, adapt to the microgravity by developing a unique gene-expression signature; the in-flight samples have an upregulation of expression in genes related to metabolic function, as seen with AQP10, and decreased expression in genes related to DNA damage and repair, like with MIR590, in comparison to the ground control samples. If the changes in gene expression in space microgravity are temporary, then subsequent to space travel, the gene-expression patterns of the in-flight samples revert to standard-gravity expression patterns post-flight, which was seen in the statistical significance analysis.
